@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Level {{ module.level_number }}: {{ module.title }} | {{ course.name }} Quest{% endblock %}
+
+{% block body_attrs %}
+  data-course-slug="{{ course.slug }}"
+  data-level-number="{{ module.level_number }}"
+  data-expected-output="{{ module.expected_output|escapejs }}"
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <!-- Top Navigation Bar for Module -->
+  <div style="padding-top: 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+    <a href="{% url 'course_quest_map' course.slug %}" class="btn btn-outline" style="padding: 0.45rem 1rem; font-size: 0.85rem;">
+      <i class="fa-solid fa-arrow-left"></i> Back to 20-Level Map
+    </a>
+
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <span style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan);">
+        Level {{ module.level_number }} / 20 &bull; {{ course.name }}
+      </span>
+
+      {% if progress.completed %}
+        <span class="level-status-pill status-completed">
+          <i class="fa-solid fa-circle-check"></i> Conquered
+        </span>
+      {% else %}
+        <span class="level-status-pill status-unlocked">
+          <i class="fa-solid fa-gamepad"></i> In Progress
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Main Module Title Banner -->
+  <div style="margin: 1.5rem 0 2rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+      <span class="hero-pill-badge" style="margin-bottom: 0; padding: 0.25rem 0.75rem;">
+        <i class="fa-solid fa-award"></i> {{ module.difficulty }}
+      </span>
+      <span style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent-amber); font-weight: 700;">
+        <i class="fa-solid fa-bolt"></i> +{{ module.xp_reward }} XP Reward
+      </span>
+    </div>
+    <h1 style="font-family: var(--font-heading); font-size: 2.3rem; font-weight: 800; color: #ffffff;">
+      Level {{ module.level_number }}: {{ module.title }}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 1.05rem; max-width: 800px;">
+      {{ module.summary }}
+    </p>
+  </div>
+
+  <!-- Split Screen: Left (Theory & Example) | Right (Sandbox, Quiz & AI Tutor) -->
+  <div class="module-interface-grid">
+
+    <!-- LEFT COLUMN: Educational Concepts & Code Examples -->
+    <div class="theory-column">
+
+      <!-- Concept Breakdown Card -->
+      <div class="theory-card">
+        <h3 style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0; font-size: 1.35rem;">
+          <i class="fa-solid fa-book-open" style="color: var(--accent-cyan);"></i> Module Concepts & Theory
+        </h3>
+        <div style="margin-top: 1.25rem;">
+          {{ module.concept_content|linebreaks }}
+        </div>
+      </div>
+
+      <!-- Demonstration Code Example Card -->
+      <div class="theory-card">
+        <h3 style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0; font-size: 1.35rem;">
+          <i class="fa-solid fa-code" style="color: var(--accent-amber);"></i> Demonstration Code Syntax
+        </h3>
+        <pre class="code-snippet-box"><code>{{ module.code_example }}</code></pre>
+      </div>
+
+      <!-- Challenge Goal Box -->
+      <div class="theory-card" style="border-left: 4px solid var(--accent-cyan); background: rgba(10, 20, 38, 0.75);">
+        <h4 style="font-family: var(--font-heading); font-size: 1.2rem; color: #ffffff; margin-bottom: 0.5rem;">
+          <i class="fa-solid fa-bullseye" style="color: var(--accent-cyan); margin-right: 6px;"></i>
+          Challenge: {{ module.challenge_title }}
+        </h4>
+        <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 0.75rem;">
+          {{ module.challenge_description }}
+        </p>
+        {% if module.solution_hint %}
+          <div style="font-size: 0.85rem; color: var(--accent-cyan); font-family: var(--font-mono);">
+            💡 Hint: {{ module.solution_hint }}
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Interactive Sandbox, Quiz & AI Tutor -->
+    <div class="interactive-column">
+
+      <!-- Interactive Code Sandbox Runner -->
+      <div class="sandbox-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.2rem; color: #ffffff; margin: 0;">
+            <i class="fa-solid fa-terminal" style="color: var(--accent-cyan); margin-right: 6px;"></i> Interactive Sandbox
+          </h3>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim);">
+            {% if course.slug == 'c' %}C99 Standard{% else %}Java 21 LTS{% endif %}
+          </span>
+        </div>
+
+        <textarea id="sandboxEditor" class="sandbox-editor-area" spellcheck="false" placeholder="Write or edit code here...">{% if progress.submitted_code %}{{ progress.submitted_code }}{% else %}{{ module.starter_code }}{% endif %}</textarea>
+
+        <div class="sandbox-actions">
+          <button id="runCodeBtn" type="button" class="btn btn-outline" style="padding: 0.55rem 1.1rem; font-size: 0.88rem;">
+            <i class="fa-solid fa-play" style="color: var(--accent-emerald);"></i> Run Simulation
+          </button>
+          <button id="resetCodeBtn" type="button" class="btn btn-outline" style="padding: 0.55rem 0.9rem; font-size: 0.88rem; color: var(--text-dim);">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <div id="terminalOutput" class="sandbox-terminal-output">
+          <span style="color: var(--text-dim);">$ Ready for execution. Click 'Run Simulation' to test code.</span>
+        </div>
+      </div>
+
+      <!-- Knowledge Check Quiz Card -->
+      <div class="quiz-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="font-family: var(--font-heading); font-size: 1.2rem; color: #ffffff; margin: 0;">
+            <i class="fa-solid fa-circle-question" style="color: var(--accent-purple); margin-right: 6px;"></i> Knowledge Check
+          </h3>
+          <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-purple);">Required for Unlock</span>
+        </div>
+
+        <p class="quiz-question-text">{{ module.quiz_question }}</p>
+
+        <div class="quiz-options-list">
+          {% for option in module.quiz_options %}
+            <label class="quiz-option-label">
+              <input type="radio" name="quiz_option" value="{{ forloop.counter0 }}" class="quiz-option-radio" style="accent-color: var(--accent-cyan);">
+              <span>{{ option }}</span>
+            </label>
+          {% endfor %}
+        </div>
+
+        <div id="quizFeedback" class="quiz-feedback-box"></div>
+
+        <!-- Submit & Unlock Next Level CTA -->
+        <button id="submitModuleBtn" type="button" class="btn btn-primary" style="width: 100%; padding: 0.95rem; font-size: 1.05rem; font-weight: 700;">
+          <i class="fa-solid fa-lock-open"></i> Submit & Unlock Next Level ➔
+        </button>
+      </div>
+
+      <!-- Embedded Quest AI Assistant Card -->
+      <div class="ai-tutor-card">
+        <div class="ai-tutor-header">
+          <div class="ai-avatar-pulse">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div>
+            <h4 style="font-family: var(--font-heading); font-size: 1.15rem; color: #ffffff; margin: 0;">
+              Quest AI Assistant
+            </h4>
+            <span style="font-size: 0.75rem; color: var(--accent-cyan); font-family: var(--font-mono);">
+              24/7 Contextual Code Mentor Active
+            </span>
+          </div>
+        </div>
+
+        <div id="aiChatHistory" class="ai-chat-history">
+          <div class="ai-msg ai-msg-tutor">
+            Hello, developer! I am your <strong>Quest AI Mentor</strong> for Level {{ module.level_number }}. Ask me to explain concepts, give a hint, or debug syntax errors anytime!
+          </div>
+        </div>
+
+        <div class="ai-input-group">
+          <input type="text" id="aiInput" class="ai-input-field" placeholder="Ask AI: e.g. Why does this work? or Give me a hint...">
+          <button id="aiSendBtn" type="button" class="btn btn-primary" style="padding: 0.65rem 1rem;">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+
+        <div class="ai-prompt-chips">
+          <button type="button" class="chip-btn" data-prompt="Explain this module's concept with a simple analogy">
+            💡 Give Analogy
+          </button>
+          <button type="button" class="chip-btn" data-prompt="Give me a hint for this challenge">
+            🔑 Challenge Hint
+          </button>
+          <button type="button" class="chip-btn" data-prompt="Explain common beginner mistakes in this topic">
+            ⚠️ Pitfalls to Avoid
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation: Previous and Next Module links -->
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem 0 4rem; border-top: 1px solid var(--border-subtle);">
+    {% if prev_module %}
+      <a href="{% url 'level_detail' course.slug prev_module.level_number %}" class="btn btn-outline">
+        <i class="fa-solid fa-chevron-left"></i> Previous: Level {{ prev_module.level_number }}
+      </a>
+    {% else %}
+      <div></div>
+    {% endif %}
+
+    {% if next_module and progress.completed %}
+      <a href="{% url 'level_detail' course.slug next_module.level_number %}" class="btn btn-primary">
+        Next: Level {{ next_module.level_number }} <i class="fa-solid fa-chevron-right"></i>
+      </a>
+    {% else %}
+      <a href="{% url 'course_quest_map' course.slug %}" class="btn btn-outline">
+        Quest Map <i class="fa-solid fa-map"></i>
+      </a>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="{% static 'js/code-runner.js' %}"></script>
+  <script src="{% static 'js/ai-tutor.js' %}"></script>
+{% endblock %}
